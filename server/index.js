@@ -4,17 +4,23 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+// AWS EB sets PORT env variable, fallback to 8081
+const port = process.env.PORT || 8081;
+// Listen on all interfaces
 const host = process.env.HOST || '0.0.0.0';
 
-// Log environment variables (without exposing the API key)
-console.log('Server Configuration:');
-console.log('PORT:', port);
-console.log('HOST:', host);
-console.log('OPENWEATHER_API_KEY:', process.env.OPENWEATHER_API_KEY ? 'Set' : 'Not Set');
-
-app.use(cors());
+// Enable CORS for all origins to fix network errors
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+
+// Basic health check endpoint for AWS 
+app.get('/', (req, res) => {
+  res.send('Weather API is running!');
+});
 
 // Weather API endpoint
 app.get('/api/weather', async (req, res) => {
@@ -27,6 +33,7 @@ app.get('/api/weather', async (req, res) => {
     console.log('Fetching weather for city:', city);
     
     if (!process.env.OPENWEATHER_API_KEY) {
+      console.error('ERROR: OpenWeather API key is not set');
       throw new Error('OpenWeather API key is not set');
     }
 
@@ -46,6 +53,12 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
+// Start the server
 app.listen(port, host, () => {
-  console.log(`Server is running on http://${host}:${port}`);
+  console.log(`Server running at http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/`);
+  console.log('Environment variables:');
+  console.log('- PORT:', port);
+  console.log('- HOST:', host);
+  console.log('- NODE_ENV:', process.env.NODE_ENV);
+  console.log('- OPENWEATHER_API_KEY:', process.env.OPENWEATHER_API_KEY ? 'Set' : 'NOT SET');
 }); 
